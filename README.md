@@ -18,7 +18,7 @@ Run the missions in order; each one builds on the last.
 | 02 | [IGNITION](02-ORBIT-Ignition.md) | 1 · AWS Foundations | A Lambda function, its CloudWatch logs and metrics, a Bedrock model call that fails until IAM says yes, the AgentCore console tour, a Cognito user pool and an OpenSearch domain | 60–75 min |
 | 03 | [THE KNOWLEDGE HEIST](03-ORBIT-The-Knowledge-Heist.md) | 2 · Agentic AI and Bedrock Fundamentals | Bedrock Playground, a managed knowledge base with inline documents, retrieval vs. generation, Agents Classic migration map | 75–90 min |
 | 04 | [LAUNCH CONTROL](04-ORBIT-Launch-Control.md) | 3 · AgentCore Architecture · 4 · Migration · 6 · Tools and Gateway | An AgentCore Harness, a Lambda tool through AgentCore Gateway, the knowledge base as a gateway target, the four-principals permission fix, observability | 120–150 min |
-| 05 | [IDENTITY LOCKDOWN](05-ORBIT-Identity-Lockdown.md) | 5 · Authentication with Cognito | A Cognito M2M app identity, a JWT-protected Harness, Secrets Manager, a Lambda test client proving accepted and rejected calls | 100–130 min |
+| 05 | [IDENTITY LOCKDOWN](05-ORBIT-Identity-Lockdown.md) | 5 · Authentication with Cognito | A Cognito M2M app identity, a JWT-protected Harness, Secrets Manager, a Lambda test client proving accepted and rejected calls | 110–140 min |
 
 Each mission ends with **challenge exercises** for people who finish early and a **cleanup** list.
 
