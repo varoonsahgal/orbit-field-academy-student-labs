@@ -8,7 +8,7 @@
 **This is a real AWS deployment, not a simulation.** You will create an AgentCore **Harness** (a managed agent), build an AWS Lambda function in the **Lambda console editor**, register it as a **Gateway** tool, fix a real permission failure in **IAM**, and read the agent's **CloudWatch** logs. No CLI, terminal, package install, or local code.
 
 > [!NOTE]
-> **Verified against the live AWS Console on October 20, 2026** in US West (Oregon) with the example ID `s07x42`. Earlier versions of this mission said the console could not wire a gateway or a knowledge base into the agent. That is no longer true: the AgentCore **Harness** does exactly that, and this guide walks you through it end to end, including the two errors you will almost certainly hit on the way.
+> **Verified against the live AWS Console on October 20, 2026** in US West (Oregon) with the example ID `s07x42`. Earlier versions of this mission said the console could not wire a gateway or a knowledge base into the agent. That is no longer true: the AgentCore **Harness** does exactly that, and this guide walks you through it end to end, including the two errors you will almost certainly hit on the way. **Re-checked on October 21, 2026:** the gateway target form now **pre-fills an example Lambda ARN** that you must replace; Phase 5 shows it.
 
 ---
 
@@ -279,10 +279,10 @@ def lambda_handler(event, context):
    | Inbound Auth configurations | **Inbound Auth type** | **Use IAM permissions**. The wizard defaults to *Use JSON Web Tokens (JWT)*; change it. JWT comes in Mission 05. |
    | Permissions | IAM permissions | **Create default role**, **Role name** `orbit-MY_ID-gateway-role` |
    | Target | **Select a target protocol** | **MCP target** |
-   | | **Target name** | `orbit-MY_ID-order-tool` |
+   | | **Target name** | `orbit-MY_ID-order-tool` (the box is pre-filled with `target-quick-start-…`; replace it) |
    | | Passthrough | leave *Do not use passthrough* |
    | | **Target type** | **Lambda ARN** |
-   | | **Lambda ARN** | paste your function ARN from Phase 4 |
+   | | **Lambda ARN** | **The box is already filled with AWS's example** `arn:aws:lambda:us-west-2:123456789012:function:my-function:$LATEST`. Click in it, select all (⌘+A / Ctrl+A), and paste your function ARN from Phase 4 over it. |
    | | **Target schema** | **Define an inline schema**, then replace the editor contents with the JSON below |
    | | Outbound Auth configurations | **IAM Role** |
 
@@ -307,6 +307,11 @@ def lambda_handler(event, context):
 
    ![Create gateway wizard filled in with IAM inbound auth and a Lambda target](images/m04-17-gateway-create-form.png)
 
+> [!WARNING]
+> **Trap: the example Lambda ARN is real text, not a hint.** The **Lambda ARN** box opens already containing `arn:aws:lambda:us-west-2:123456789012:function:my-function:$LATEST`, an AWS documentation example in a made-up account. If you leave it there, the wizard does two wrong things with it: it points the target at a function that does not exist in your account, **and** it scopes your new gateway role's `lambda:InvokeFunction` permission to that same example ARN. The target then fails with *Gateway execution role lacks permission to invoke Lambda function arn:aws:lambda:us-west-2:123456789012:function:my-function:$LATEST*, and no IAM edit can fix it, because the ARN the gateway is trying to call is the wrong one. Before you choose **Create gateway**, read the ARN in the box: it must contain **your** account number and `orbit-MY_ID-order-lookup`.
+>
+> ![Add target form opening with the example ARN pre-filled in the Lambda ARN box](images/m04-19a-gateway-target-prefilled-arn.png)
+
 3. Choose **Create gateway**.
 
 > [!WARNING]
@@ -314,7 +319,7 @@ def lambda_handler(event, context):
 >
 > ![Gateway created, target failed on the AssumeRole race](images/m04-18-gateway-created-target-error.png)
 
-4. **Fix it by retrying the target.** On the gateway detail page scroll to **Targets (0)** and choose **Add**. Fill in the same target again: *MCP target*, name `orbit-MY_ID-order-tool`, type **Lambda ARN**, your ARN, **Define an inline schema** with the JSON above, outbound **IAM Role**. Choose **Add target**.
+4. **Fix it by retrying the target.** On the gateway detail page scroll to **Targets (0)** and choose **Add**. Fill in the same target again: *MCP target*, name `orbit-MY_ID-order-tool`, type **Lambda ARN**, your ARN, **Define an inline schema** with the JSON above, outbound **IAM Role**. The **Add target** form pre-fills the same three defaults as the wizard (a `target-quick-start-…` name, the example Lambda ARN, and a `DefaultTool` schema), so replace all three again. Choose **Add target**.
 
    ![Add target form with the Lambda ARN and inline schema](images/m04-19-gateway-add-target.png)
 
@@ -473,6 +478,8 @@ Open **IAM → Roles** and view `orbit-MY_ID-harness-role` and `orbit-MY_ID-gate
 | *Model produced invalid sequence as part of ToolUse* | The harness is using Amazon Nova. Edit the harness and switch the model to Claude Haiku 4.5 (Phase 1, step 4). |
 | *Memory ARN is required when memory is enabled* on Create Harness | Expand **Memory** and select **Create new Memory (managed by Harness)**, or untick **Enable Memory**. |
 | *Gateway service is not authorized to perform AssumeRole on Gateway role* | IAM propagation race. Wait 30–60 s and **Add** the target again (Phase 5, step 4). |
+| *Gateway execution role lacks permission to invoke Lambda function arn:aws:lambda:us-west-2:**123456789012**:function:**my-function**:$LATEST* | The Lambda ARN box still holds the console's pre-filled example (Phase 5 warning). This is not an IAM problem, so widening the role changes nothing. Open **Targets → Add**, select all in the Lambda ARN box, paste **your** ARN, and add the target again. If the gateway itself was created with the example ARN, also fix the role: **IAM → Roles → `orbit-MY_ID-gateway-role`**, open the attached `AmazonBedrockAgentCoreGatewayLambdaProd_…` policy, choose **Edit**, and change its `Resource` from the example ARN to your function ARN. |
+| *Gateway execution role lacks permission to invoke Lambda function …* naming **your own** ARN | The target ARN is right but the gateway role's `AmazonBedrockAgentCoreGatewayLambdaProd_…` policy is scoped to a different function, usually the example ARN from a first attempt. Edit that policy's `Resource` to your function ARN (the **Add target** form never rewrites the policy), wait 30 s, and add the target again. |
 | *At least one gateway ARN is required when gateway is enabled* | The gateway toggle is on but no gateway was selected in the dropdown. |
 | *Failed to load tool … 403 Forbidden* | Harness execution role lacks `bedrock-agentcore:InvokeGateway` on **your** gateway ARN (Phase 6). After fixing, start a **new session**. |
 | Tool exists on the gateway but the agent never calls it | You are in an old session; start a new one. Check the tool *description* explains when to use it. |
