@@ -202,7 +202,7 @@ Use the console as a systems investigator. **Do not change any role or policy ye
 
    ![Log events from one runtime session](images/m04-11-cloudwatch-log-events.png)
 
-5. Open **Assess → Observability**. The **Bedrock AgentCore Observability** dashboard lists sessions and traces per agent once data arrives (it can lag by up to an hour).
+5. Open **GenAI Observability -> Bedrock AgentCore**. The **Bedrock AgentCore Observability** dashboard lists sessions and traces per agent once data arrives (it can lag by up to an hour).
 
    ![CloudWatch GenAI Observability dashboard for AgentCore](images/m04-12-observability.png)
 
