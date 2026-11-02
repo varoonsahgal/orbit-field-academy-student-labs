@@ -4,7 +4,7 @@
 
 > **Read alongside:** Mission 05, *Identity Lockdown*  
 > **Environment:** AWS Management Console only · **Region:** `us-west-2` (US West / Oregon)  
-> **Mission:** Prove—not merely assume—that an approved application can invoke the ORBIT agent while missing, forged, and otherwise unauthorized credentials are rejected.
+> **Mission:** Prove—not merely assume—that an approved application can invoke the ORBIT agent while missing, forged, tampered, and wrong-scope credentials are rejected.
 
 ---
 
@@ -32,7 +32,7 @@ flowchart TB
     C -->|Signed access JWT| T
     T -->|HTTPS: Bearer JWT + message + session ID| A[AgentCore inbound JWT authorizer]
     A -->|Valid issuer, signature, client, scope, expiry| H[Protected Harness / ORBIT support assistant]
-    A -->|Missing, forged, or unauthorized| R[Reject request / 401 or 403]
+    A -->|Missing, forged, tampered, or wrong client/scope| R[Reject request / 403, or 500 UnrecognizedClientException]
     H --> RT[AgentCore Runtime / Isolated execution session]
     RT --> M[Amazon Bedrock / Claude Haiku model]
     RT -. Logs and traces .-> CW[CloudWatch]
@@ -96,7 +96,7 @@ sequenceDiagram
     participant App as Approved application
     participant Auth as Cognito authorization server
     participant API as Protected AgentCore endpoint
-    App->>Auth: Prove client identity; request invoke scope
+    App->>Auth: Prove client identity, request invoke scope
     Auth-->>App: Signed access token
     App->>API: Authorization: Bearer ACCESS_TOKEN
     API->>API: Validate token and required permissions
@@ -520,7 +520,7 @@ sequenceDiagram
 
 In the supplied lab, the result was `runtime_http_status: 403` with `Missing Authentication Token`.
 
-**Be precise:** depending on the front-end service and failure type, an authentication failure may appear as `401` or `403`. Don't memorize one numeric code as the universal rule. The key evidence is **rejection before model inference**.
+**Be precise:** depending on the failure type, an authentication failure may appear as `403` **or as `500` with `x-amzn-ErrorType: UnrecognizedClientException`** (see Q29a). Don't memorize one numeric code as the universal rule. The key evidence is **rejection before model inference**: rejected calls finish in well under a second, while a real answer takes about three.
 
 ## ❓ 29. What happens with `{"mode":"forged"}`?
 
@@ -533,6 +533,22 @@ Authorization: Bearer this.is.not.a.valid.jwt
 It doesn't have a valid token structure/signature from your Cognito pool. The AgentCore authorizer rejects it **before the model runs**.
 
 The lab observed `403` and a message explaining that the token could not be parsed. Other invalid-token formats may fail at different verification stages.
+
+## ❓ 29a. What happens with `{"mode":"tampered"}`, and why is it a `500`?
+
+The Lambda gets a **genuine** token from Cognito, then changes the last six characters, which belong to the **signature**. The header and payload still decode perfectly and still name your pool, client and scope; only the cryptographic check can tell the token was altered.
+
+AgentCore rejects it, but differently from `forged`: the verified result is **`500`, an empty body, and the response header `x-amzn-ErrorType: UnrecognizedClientException`**. The lab's test client surfaces that header as `error_type`.
+
+| What the authorizer received | Verified response |
+|---|---|
+| No token (`missing`) | `403` `AccessDeniedException`, *Missing Authentication Token* |
+| Not a JWT (`forged`) | `403` `AccessDeniedException`, *Failed to parse token* |
+| Well-formed JWT with a bad signature (`tampered`) | `500` `UnrecognizedClientException`, empty body |
+| Genuine JWT, scope not in **Allowed scopes** (`wrong-scope`) | `500` `UnrecognizedClientException`, empty body |
+| Genuine JWT from an app client not in **Allowed clients** | `500` `UnrecognizedClientException`, empty body |
+
+So a `500` here is **not** a crash inside the agent; it is the authorizer refusing a real-looking token. The empty body is also good practice: the caller isn't told *which* check failed.
 
 ## ❓ 30. What if the JWT is valid, but from the **wrong Cognito pool**?
 
@@ -554,8 +570,8 @@ For example, an unrelated app client in the same Cognito pool should not gain ac
 
 There are two possible failure stages:
 
-- Cognito might reject the **token request** if the app requests a scope it has not been granted.
-- AgentCore should reject an **otherwise valid token** if its `scope` claim lacks the required `invoke` permission.
+- Cognito rejects the **token request** if the scope doesn't exist (`invalid_scope`, verified with `orbit-MY_ID-api/admin`) or exists but isn't enabled on this app client (`invalid_grant`).
+- AgentCore rejects an **otherwise valid token** if its `scope` claim lacks the required `invoke` permission. The lab's `wrong-scope` test proves it: a genuine token for the wizard's default `…/read` scope gets `token_status: 200` from Cognito and then `500 UnrecognizedClientException` from the harness.
 
 These are different errors in different services.
 
@@ -745,24 +761,27 @@ flowchart TD
     TokenOK -->|No| Cog[Check client ID/secret, grant type, / token URL, and assigned scope]
     TokenOK -->|Yes| Inv
     Inv --> Auth{AgentCore accepted?}
-    Auth -->|401 or 403| JWT[Check discovery URL, issuer, / client ID, scope, expiry, JWT validity]
+    Auth -->|403 AccessDeniedException| NoTok[No token sent, / or not a JWT at all]
+    Auth -->|500 UnrecognizedClientException| JWT[Real token refused: check discovery URL, / Allowed clients, Allowed scopes, expiry]
     Auth -->|200| Success[Success: inspect model answer]
-    Auth -->|5xx| Runtime[Check Harness Ready state, / model permissions, and CloudWatch logs]
+    Auth -->|other 5xx| Runtime[Check Harness Ready state, / model permissions, and CloudWatch logs]
     classDef error fill:#ffe7e7,stroke:#c74e4e,color:#5b2222
-    class IAM,Cog,JWT,Runtime error
+    class IAM,Cog,NoTok,JWT,Runtime error
 ```
 
 ## ❓ 46. What's the difference between `token_status` and `runtime_http_status`?
 
-- **`token_status`:** The result of contacting **Cognito** to obtain an access token (only attempted in the `good` mode).
+- **`token_status`:** The result of contacting **Cognito** to obtain an access token (attempted in the `good`, `tampered` and `wrong-scope` modes).
+- **`error_type`:** The `x-amzn-ErrorType` header AgentCore returned, which names the rejection even when the body is empty.
 - **`runtime_http_status`:** The result of contacting **AgentCore** with or without a token.
 
 | Observed combination | Likely meaning |
 |---|---|
 | `token_status: 200`, `runtime_http_status: 200` | Cognito issued token; AgentCore accepted request; agent responded |
 | `token_status: 400`, no runtime status | Cognito rejected token request; invocation wasn't attempted |
-| `token_status: 200`, runtime `401/403` | Token issued, but AgentCore's inbound validation rejected it |
-| `token_status: 200`, runtime `5xx` | Authentication may have succeeded; downstream runtime/model failure needs investigation |
+| `token_status: 200`, runtime `500`, `error_type: UnrecognizedClientException` | Token issued, but AgentCore's inbound validation refused it (signature, client or scope) |
+| `token_status: 200`, runtime `403` | The bearer token wasn't sent or couldn't be parsed |
+| `token_status: 200`, another `5xx` with a body | Authentication succeeded; downstream runtime/model failure needs investigation |
 | `token_status: null`, runtime `403` for `missing` | Expected missing-token rejection in the supplied lab |
 
 Don't try to fix a **Cognito token issuance** failure by adding more IAM permissions to the Harness role.
@@ -782,11 +801,11 @@ Check these items:
 3. The full requested scope is `orbit-MY_ID-api/invoke`.
 4. The **app client** has that custom scope enabled.
 
-Different invalid configurations can generate different OAuth errors. The lab describes both `invalid_scope` and scope-assignment failures; do not assume one error string always identifies the exact cause.
+Different invalid configurations generate different OAuth errors. `invalid_scope` means the scope string doesn't exist as spelled (a typo in the identifier or scope name). `invalid_grant` means it exists but isn't enabled on this app client (item 4).
 
-## ❓ 49. What if token issuance works, but the Harness still returns `403`?
+## ❓ 49. What if token issuance works, but the Harness still rejects the request?
 
-Inspect **Harness → Inbound Auth** and compare the settings with the token you intended to issue:
+In this lab that rejection shows up as `runtime_http_status: 500` with `error_type: UnrecognizedClientException` and an empty body: the authorizer refused a real token. Inspect **Harness → Inbound Auth** and compare the settings with the token you intended to issue:
 
 - Correct Cognito **discovery URL** (pool, not hosted-domain token URL).
 - **Allowed clients** matches the registered app client ID.
@@ -932,7 +951,7 @@ flowchart TB
 - [ ] I know the difference between the **token endpoint, issuer URL, discovery URL, and JWKS URL**.
 - [ ] I can explain `iss`, `client_id`, `scope`, `exp`, and why we leave **Allowed audiences** off **for this M2M lab**.
 - [ ] I know why **JWT claims can be decoded but must not be trusted without signature verification**.
-- [ ] I can trace the three test results: `good`, `missing`, and `forged`.
+- [ ] I can trace the five test results: `good`, `missing`, `forged`, `tampered`, and `wrong-scope`, and say which service said "No" for each.
 - [ ] I know which **IAM role** needs access to Secrets Manager.
 - [ ] I can distinguish **JWT inbound authentication** from **Harness outbound IAM permissions**.
 - [ ] I know why an app M2M identity **does not prove who the human customer is**.
@@ -955,7 +974,7 @@ These links are for understanding the services and checking current behavior. Co
 - [AWS IAM: Roles and temporary credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html)
 - [OpenTelemetry: Observability fundamentals](https://opentelemetry.io/docs/concepts/observability-primer/)
 
-**Source fidelity note:** The specific ORBIT names, three Lambda test modes, selected model, configuration decisions, observed HTTP statuses, and exact console lab sequence above come from *Mission 05 — Identity Lockdown* (verified by its author October 20, 2026). Broader production architecture advice, token-handling cautions, and the nuance about optional `aud` claims in other Cognito flows are additional context informed by the AWS documentation above. All URLs and ARNs labeled "example" or "illustrative" must be replaced with values from your own AWS account when needed.
+**Source fidelity note:** The specific ORBIT names, five Lambda test modes, selected model, configuration decisions, observed HTTP statuses, and exact console lab sequence above come from *Mission 05 — Identity Lockdown* (verified October 20, 2026 and re-verified October 25, 2026). Broader production architecture advice, token-handling cautions, and the nuance about optional `aud` claims in other Cognito flows are additional context informed by the AWS documentation above. All URLs and ARNs labeled "example" or "illustrative" must be replaced with values from your own AWS account when needed.
 
 ---
 
