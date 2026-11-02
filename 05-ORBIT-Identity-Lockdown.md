@@ -207,6 +207,16 @@ flowchart LR
 
 ### Step A: Create the user pool and M2M app client in one wizard
 
+> [!CAUTION]
+> **You create a brand-new pool here. Do not open an existing one.** The **User pools** list shows every pool in the shared account: the instructor's read-only `orbit-academy-pool` from Mission 02, and your classmates' pools. In an earlier class several people opened a pool that was not theirs and added their app client to it; their tokens then came from someone else's badge office and every test failed in confusing ways. Choose **Create user pool**, and only ever open a pool whose name contains *your* `MY_ID`.
+>
+> | | Mission 02 | Mission 05 (today) |
+> |---|---|---|
+> | Pool | `orbit-academy-pool` (shared, instructor's) | `orbit-MY_ID-pool` (yours, you create it) |
+> | Who signs in | People (recruits) on a hosted login page | A program, with a client ID and secret |
+> | OAuth flow | Authorization code | Client credentials (machine-to-machine) |
+> | You may change it? | **No**, read-only | **Yes**, and you delete it at the end |
+
 1. Console search → **Cognito** → **User pools** → **Create user pool**. The wizard is titled *Set up resources for your application*.
 2. Under **Application type** choose **Machine-to-machine application**. The other options (web, SPA, mobile) are for human sign-in and add fields you do not need.
 3. **Name your application:** `orbit-MY_ID-m2m`.
@@ -221,7 +231,7 @@ flowchart LR
 
 ### Step B: Rename the pool and record the issuer
 
-5. Choose **Go to overview**. Choose **Rename**, enter `orbit-MY_ID-pool`, and **Save changes**. (In a shared account, a name that carries `MY_ID` is how you, your classmates and your instructor tell 30 pools apart.)
+5. Choose **Go to overview**. Choose **Rename**, enter `orbit-MY_ID-pool`, and **Save changes**. (In a shared account, a name that carries `MY_ID` is how you, your classmates and your instructor tell 30 pools apart. **Do not skip this.** After the last class the account held eleven pools still called *User pool - xxxxxx* that nobody could identify, and pools nobody can identify are pools nobody dares to delete.)
 
    ![Rename dialog for the user pool](images/m05-03-cognito-rename.png)
 
@@ -349,7 +359,7 @@ flowchart LR
 
 Notice the dotted line from Cognito to the authorizer: the guard only reads the badge office's **public** keys. Cognito is **not** called for each request. That is the general trade-off of JWTs: checking them is fast and needs no call home, so the token's short lifetime (`exp`, 60 minutes by default) is what limits the damage if one ever leaks.
 
-1. **AgentCore → Build → Harness → Quick create Harness ▾ → Advanced create Harness**.
+1. **AgentCore → Agents → More ▾ → Advanced create** (the form is titled **Create Harness**).
 2. **Harness name:** `orbit_MY_ID_secure`.
 3. **Model and system prompt:** the form now defaults to **Claude Sonnet 4.6**. Change it to **Anthropic → Claude Haiku 4.5** (inference profile *US Anthropic Claude Haiku 4.5*). Haiku is cheaper and faster, and today's test needs a working agent, not a brilliant one. Set the system prompt:
 
@@ -378,7 +388,7 @@ Notice the dotted line from Cognito to the authorizer: the guard only reads the 
    ![Secure harness detail page with the Inbound Auth panel showing the JWT settings](images/m05-15-harness-secure-inbound.png)
 
 > [!IMPORTANT]
-> The console **Harness playground signs requests with your own IAM identity**, so it cannot exercise the JWT path and may simply refuse. **Do not downgrade the harness to IAM to "make the playground work."** The Lambda client in the next phase is the valid test. That's the whole point: this front door no longer accepts AWS console identities.
+> The console **playground (Test agent) signs requests with your own IAM identity**, so it cannot exercise the JWT path and may simply refuse. **Do not downgrade the harness to IAM to "make the playground work."** The Lambda client in the next phase is the valid test. That's the whole point: this front door no longer accepts AWS console identities.
 
 **🔍 What you have now:** an agent whose only entrance checks five things about every badge: the signature, the issuer, the client, the scope and the expiry. It has its own IAM keycard (the execution role) for the model room. Nobody has knocked yet.
 
@@ -746,7 +756,19 @@ Three things change in production, and you've already met each one:
 
 ### Optional inspection — outbound identity
 
-Open **AgentCore → Identity** and look at the workload identities and credential providers. Do not create providers for outside services. Answer: how is **inbound JWT validation** (who may call me) different from **outbound OAuth credentials** (what I may call downstream)? *Hint: today the badge office was Cognito and the guard was AgentCore. For outbound calls, AgentCore becomes the visitor collecting badges from someone else's office.*
+Open **AgentCore → Connections → Outbound Auth** (this page was called *Identity* until late October 2026). Its *How it works* panel explains inbound and outbound auth side by side; the list shows the account's outbound credential providers. Do not create providers for outside services. Answer: how is **inbound JWT validation** (who may call me) different from **outbound OAuth credentials** (what I may call downstream)? *Hint: today the badge office was Cognito and the guard was AgentCore. For outbound calls, AgentCore becomes the visitor collecting badges from someone else's office.*
+
+---
+
+## 🔭 Production lens: authentication is the first of several gates
+
+Your JWT authorizer proves *which app* is calling. It says nothing about *what that app may make the agent do*. A real deployment adds, in order:
+
+1. **User identity in the token** (authorization-code sign-in, as in Mission 02), so tools can restrict a customer to *their own* orders.
+2. **Policy on the gateway** that reads token claims: a Cedar `permit` can require `principal.getTag("scope")` to contain a refund scope before `issue_refund` runs. Mission 06 builds the gateway policy with IAM callers; the same engine reads JWT claims when the gateway uses JWT inbound auth.
+3. **Guardrails, limits and evaluations** on the agent itself (Mission 06).
+
+The question to keep asking is the one from Phase 6: *for each threat, which control helps, and what is the evidence?*
 
 ---
 

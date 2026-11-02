@@ -8,7 +8,7 @@
 **You already created the role for this mission.** Mission 01 left you with `orbit-MY_ID-lambda-role`, trusted by Lambda and allowed only to write logs. Keep the ledger from Mission 01 at hand.
 
 > [!NOTE]
-> **Verified against the live AWS Console on October 21, 2026** in US West (Oregon) as participant `s07x42`. The Lambda console now opens a **VS Code-based editor** inside the browser and calls functions **Event Functions**; both are reflected below. The OpenSearch domain steps in Phase 8 were written from the console's documented layout; if a label differs, look for the nearest equivalent.
+> **Verified against the live AWS Console on October 21, 2026** in US West (Oregon) as participant `s07x42`. The Lambda console now opens a **VS Code-based editor** inside the browser and calls functions **Event Functions**; both are reflected below. The OpenSearch domain steps in Phase 8 were written from the console's documented layout; if a label differs, look for the nearest equivalent. **Updated November 2, 2026:** the AgentCore tour (Phase 6) uses the reorganised AgentCore console, and the Cognito phase (Phase 7) was rewritten after a class found it confusing: it is now explicitly read-only, uses the console's **View login page** button instead of a URL from the whiteboard, and explains the expected *This site can't be reached* screen before you meet it.
 
 ---
 
@@ -72,7 +72,17 @@ An AgentCore Harness or Runtime runs *as* an IAM role, exactly like Lambda does.
 
 ### Amazon Cognito in four terms
 
-**User pool** (a user directory and OAuth 2.0 / OpenID Connect server) → **app client** (an application registered with the pool; public clients have no secret, confidential clients do) → **hosted login pages** on a **domain** (where users sign in) → **tokens** (JWTs: an ID token about the person, an access token about the permission scopes). The pool publishes its **issuer** URL, a **discovery document** and its **JWKS** public keys so that any service, including AgentCore, can verify a token without calling Cognito. Mission 05 wires this into an agent.
+**User pool** (a user directory and OAuth 2.0 / OpenID Connect server) → **app client** (an application registered with the pool; public clients have no secret, confidential clients do) → **hosted login pages** on a **domain** (where users sign in) → **tokens** (JWTs: an ID token about the person, an access token about the permission scopes). The pool publishes its **issuer** URL, a **discovery document** and its **JWKS** public keys so that any service, including AgentCore, can verify a token without calling Cognito.
+
+**Why look at Cognito now, before any agent exists?** Because every agent you build later has a front door, and somebody has to hand out the keys. Today you only *watch* a person collect one, on the instructor's shared pool. In Mission 05 you build your *own* pool for a program instead of a person and lock an agent behind it.
+
+| | **Today (Mission 02)** | **Mission 05** |
+|---|---|---|
+| Pool | `orbit-academy-pool`, shared, created by the instructor | `orbit-MY_ID-pool`, yours, you create it |
+| Who signs in | A **person** (your `recruitNN` user) on a hosted login page | A **program** with a client ID and a secret |
+| OAuth flow | **Authorization code** (browser redirect) | **Client credentials** (machine to machine) |
+| What you do | Read the settings, sign in once, look at what comes back | Build everything, then test accepted and rejected calls |
+| May you change it? | **No**, read-only | **Yes**, and you delete it at the end |
 
 ### Amazon OpenSearch Service in four terms
 
@@ -92,17 +102,15 @@ A **domain** is a managed OpenSearch cluster (nodes in one or more AZs). It hold
 | Inline policy on your role | `orbit-MY_ID-bedrock-invoke` |
 | (Challenge) CloudWatch alarm | `orbit-MY_ID-hello-errors` |
 
-3. **Instructor values** (fill in from the whiteboard):
+3. **Two values for Phase 7** (you need nothing else from the instructor; the console gives you the rest):
 
 | Item | Value |
 |---|---|
-| Cognito hosted login URL | |
-| Your recruit user name (`recruitNN`) | |
-| Temporary password | |
-| OpenSearch domain name | `orbit-academy-search` |
+| Your recruit user name | `recruitNN`, where **NN is your participant number** (sign-in name `participant-07` → `recruit07`) |
+| Temporary password | announced by the instructor (the same for every recruit until first sign-in) |
 
 > [!CAUTION]
-> `orbit-academy-pool` and `orbit-academy-search` are **shared, read-only**. Look, never edit. Your student permissions explicitly deny changes to them, so an *Access denied* on those pages means you clicked something you were not meant to.
+> `orbit-academy-pool` (Cognito) and `orbit-academy-search` (OpenSearch) are **shared and read-only**, created by the instructor before class. **In this mission you create nothing in Cognito.** If you find yourself on a *Create user pool* or *Create app client* page, you have wandered into Mission 05; go back. Your student permissions deny changes to the shared resources, so an *Access denied* there means you clicked something you were not meant to.
 
 **Resource ledger**
 
@@ -390,89 +398,144 @@ A **domain** is a managed OpenSearch cluster (nodes in one or more AZs). It hold
 
 **Concept:** Amazon Bedrock AgentCore is where the ORBIT agent will live from Mission 04 on. Today you learn the map and the one security idea that carries over from Lambda: **an agent runs as a role**.
 
-1. Search for `AgentCore` and open **Amazon Bedrock AgentCore**. The **Overview** lists the building blocks: **Harness** (an agent defined by configuration), **Runtime** (the secure micro-VMs it runs in), **Gateways** (tools exposed through the Model Context Protocol), **Memory**, **Policy**, **Identity**, **Built-in tools** (Browser, Code Interpreter, Knowledge Bases), and under *Assess*, **Observability** and **Evaluations**.
+1. Search for `AgentCore` and open **Amazon Bedrock AgentCore**. The **Overview** page has four cards (build, observe, evaluate, explore). The left navigation is the map for the rest of the course:
 
-   ![AgentCore overview page](images/m02-21-agentcore-overview.png)
+   | Menu | What lives there | Mission |
+   |---|---|---|
+   | **Agents** | Your agents (a *harness* is an agent defined by configuration, running on AgentCore *Runtime*) with sessions, errors, latency and token cost | 04, 05, 06 |
+   | **Playground** | Chat with an agent and see every tool call | 04, 06 |
+   | **Observability** | Sessions, traces and spans across agents | 04, 06 |
+   | **Connections** | Knowledge Bases (Mission 03), **Outbound Auth** (credentials an agent uses to call other systems), Browser, Code Interpreter | 03, 05 |
+   | **Resources** | Memory, **Evaluations**, **Gateways** (tools exposed through MCP), **Policy** (rules for tool calls) | 04, 06 |
 
-2. Open **Harness**. The list is where your agent will appear in Mission 04. Read the three cards: create, test in the playground, assess with observability.
+   ![AgentCore Overview with the left navigation](images/m02-21-agentcore-overview.png)
 
-   ![Harness page before any harness exists](images/m02-22-agentcore-harness.png)
+2. Open **Agents**. Each card shows one agent's usage, errors, P90 latency and token cost. In the shared account you will see classmates' agents later; filter by your `MY_ID`. (The screenshot is from a later verification run; yours will be empty today.)
 
-3. Open **Identity**. This is where **inbound** authentication (who may call the agent: IAM or a JWT from a pool like the Cognito one you inspect next) and **outbound** credentials (how the agent authenticates to other APIs) are configured.
+   ![Agents page with one agent card](images/m02-22-agentcore-agents.png)
 
-   ![AgentCore Identity page](images/m02-23-agentcore-identity.png)
-
-4. Open **Observability**. Agent sessions, traces and spans land here, on top of the same CloudWatch you used in Phase 3.
+3. Open **Connections → Outbound Auth**. Its *How it works* panel explains the two directions of identity you will meet: **inbound** (who may call the agent: IAM, or a JWT from a pool like the Cognito one you inspect next) and **outbound** (how the agent proves itself to other APIs).
+4. Open **Observability**. Agent sessions, traces and spans land here, built on the same CloudWatch you used in Phase 3.
 
    ![AgentCore Observability page](images/m02-24-agentcore-observability.png)
 
 5. **The execution-role comparison.** Open IAM in a second tab and put the two trust policies side by side:
 
-| | Your Lambda role (Mission 01, Phase 5) | The mystery role (Mission 01, Phase 4) = AgentCore pattern |
-|---|---|---|
-| Trusted service principal | `lambda.amazonaws.com` | `bedrock-agentcore.amazonaws.com` |
-| Conditions | none | `aws:SourceAccount` = this account, `aws:SourceArn` like `arn:aws:bedrock-agentcore:us-west-2:ACCOUNT:*` |
-| Typical permissions | `logs:*` (basic execution) + what the code needs (`bedrock:InvokeModel` on one model) | `bedrock:InvokeModel*` on allowed models and inference profiles, `bedrock-agentcore:InvokeGateway` on its gateways, `logs:*` on `/aws/bedrock-agentcore/runtimes/*`, read-only tool access, explicit denies on writes |
+   | | Your Lambda role (Mission 01, Phase 5) | The mystery role (Mission 01, Phase 4) = AgentCore pattern |
+   |---|---|---|
+   | Trusted service principal | `lambda.amazonaws.com` | `bedrock-agentcore.amazonaws.com` |
+   | Conditions | none | `aws:SourceAccount` = this account, `aws:SourceArn` like `arn:aws:bedrock-agentcore:us-west-2:ACCOUNT:*` |
+   | Typical permissions | `logs:*` (basic execution) + what the code needs (`bedrock:InvokeModel` on one model) | `bedrock:InvokeModel*` on allowed models and inference profiles, `bedrock-agentcore:InvokeGateway` on its gateways, `logs:*` on `/aws/bedrock-agentcore/runtimes/*`, read-only tool access, explicit denies on writes |
 
    The two roles are the same idea with different principals. In Mission 04 the console creates an AgentCore role for you; now you will be able to read it.
 
 **🧩 Investigation checkpoint**
 
-- [ ] I can name the AgentCore building block that would host the Lambda function as a **tool** (Gateway) and the one that would hold the **agent** (Harness).
+- [ ] I can name the AgentCore menu that would host the Lambda function as a **tool** (Resources → Gateways) and the one that holds the **agent** (Agents).
 - [ ] I can explain why an agent's role should not be the same role as its tools' roles.
 
 ---
 
-## 🔐 Phase 7 — Inspect the Cognito user pool, then get a real token (10 minutes)
+## 🔐 Phase 7 — Watch a person get a token from the shared Cognito pool (15 minutes)
 
-**Concept:** AgentCore and APIs do not know your users; they trust **tokens** issued by an identity provider. The instructor's pool `orbit-academy-pool` is such a provider. You will read its configuration, confirm that its public endpoints are really public, and sign in as a recruit to see where a token comes from.
+**Concept:** AgentCore and other APIs do not know your users; they trust **tokens** issued by an identity provider. The instructor's pool `orbit-academy-pool` is such a provider. You will read how it is configured, confirm that its public endpoints really are public, and sign in once as a recruit to see the first half of the most common sign-in flow on the web. **You only read and sign in. You create and change nothing.**
 
-1. Search for `Cognito` and open it. **User pools** lists every pool in the account; open **`orbit-academy-pool`**.
+Here is the whole flow before you start, so nothing in step 6 surprises you:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as 🧑 You (browser)
+    participant C as 🪪 Cognito hosted login<br/>orbit-academy-….auth.us-west-2.amazoncognito.com
+    participant A as 💻 The app's callback<br/>https://localhost:8080/callback
+    B->>C: View login page (client ID + allowed callback in the URL)
+    C->>B: Username → password → set a new password
+    C-->>B: Redirect to the callback with ?code=…
+    B->>A: Browser follows the redirect
+    Note over A: Nothing is listening on your laptop,<br/>so the browser shows "This site can't be reached".<br/>That is expected: the code is in the address bar.
+    A-->>C: (a real app would now swap the code for tokens: Challenge C)
+```
+
+### Step A: Read the pool (read-only)
+
+1. Search for `Cognito` and open it. **User pools** lists every pool in the account, including ones classmates create in Mission 05. Open **`orbit-academy-pool`** and nothing else.
 
    ![Cognito user pools list](images/m02-25-cognito-pools.png)
 
-2. The pool **Overview** shows the **User pool ID** (`us-west-2_…`), the ARN, the **estimated number of users** (31), the feature plan (*Essentials*), and two URLs you will use in a moment: the **OpenID Connect configuration URL** and the **Token signing key URL**.
+2. The pool **Overview** shows the **User pool ID** (`us-west-2_…`), the ARN, the **estimated number of users** (31: thirty recruits and one for the instructor), the feature plan (*Essentials*), and two URLs you will use in a moment: the **OpenID Connect configuration URL** and the **Token signing key URL**.
 
    ![Pool overview](images/m02-26-cognito-pool-overview.png)
 
-3. In the left navigation choose **User management → Users**: thirty recruits with **Confirmation status** *Force change password* until each one signs in for the first time. Find your own `recruitNN`.
+3. **User management → Users**: thirty recruits, each with **Confirmation status** *Force change password* until its first sign-in. Find **your** `recruitNN` (NN = your participant number). **Use only that one.** A recruit's password changes the first time someone signs in with it, so a classmate who borrows your number locks you out.
 
    ![Users list with the recruit accounts](images/m02-27-cognito-users.png)
 
-4. Choose **Applications → App clients** and open **`orbit-academy-web`**. **App client information** shows the **Client ID**, **Client secret: -** (a **public** client has none), the authentication flows (*Choice-based sign-in*, *Secure remote password (SRP)*), and the token lifetimes (access and ID tokens 60 minutes, refresh token 1 day). Open the **Login pages** tab: the **allowed callback URLs** (`https://localhost:8080/callback`), the OAuth grant **Authorization code**, the scopes (`openid`, `email`, `profile`, `orbit-academy-api/read`) and the pool's **domain** (`orbit-academy-….auth.us-west-2.amazoncognito.com`), where the hosted sign-in lives.
+4. **Applications → App clients → `orbit-academy-web`**. Read **App client information**:
+   - **Client ID**: like a username for the *application*. Public by design.
+   - **Client secret: -**: none. This is a **public client**: it is meant for code that runs in a browser or on a phone, where a secret could not be kept anyway.
+   - **Authentication flows** (*Choice-based sign-in*, *SRP*) and token lifetimes (access and ID tokens 60 minutes, refresh token 1 day).
 
    ![App clients list](images/m02-28-cognito-app-clients.png)
 
    ![App client information for orbit-academy-web](images/m02-28b-cognito-app-client-detail.png)
 
-5. **Public by design.** In a new browser tab open the pool's discovery document (replace the pool ID with the one on the Overview page):
+5. Open the **Login pages** tab. It answers the three questions every sign-in page needs answered:
+
+   | Setting | Value | Why it matters |
+   |---|---|---|
+   | **Allowed callback URLs** | `https://localhost:8080/callback` | The *only* place Cognito will send a user after sign-in. An attacker cannot redirect the result to their own site. |
+   | **OAuth grant types** | Authorization code grant | The browser receives a short-lived **code**, not the tokens themselves. |
+   | **Scopes** | `openid`, `email`, `profile`, `orbit-academy-api/read` | What the app is asking permission for. |
+
+   ![Login pages tab with the View login page button](images/m02-28c-cognito-view-login-page.png)
+
+### Step B: Prove the public parts are public
+
+6. In a new browser tab open the pool's **discovery document** (replace `POOL_ID` with the **User pool ID** from the Overview):
 
    ```
    https://cognito-idp.us-west-2.amazonaws.com/POOL_ID/.well-known/openid-configuration
    ```
 
-   You get JSON with `issuer`, `authorization_endpoint`, `token_endpoint`, `jwks_uri` and the supported scopes, with no sign-in. Open the `jwks_uri` too: two RSA public keys. Any service can verify a token offline with those; the private keys never leave Cognito. This URL is what Mission 05 pastes into AgentCore as the *discovery URL*.
+   You get JSON with `issuer`, `authorization_endpoint`, `token_endpoint`, `jwks_uri` and the supported scopes, with no sign-in. Open the `jwks_uri` too: two RSA **public** keys. Any service can verify a token offline with them; the private keys never leave Cognito. In Mission 05 you paste a URL like this one into AgentCore as the *discovery URL* of your own pool.
 
-6. **Sign in as a recruit.** Open the hosted login URL from the whiteboard. The managed login page asks for your **Username** (`recruitNN`) → **Next**, then the temporary **Password** → **Sign in**, then, because the account is in *Force change password* state, a **new password** (10+ characters with upper, lower, number and symbol, typed twice). After you set it, the browser is sent to `https://localhost:8080/callback?code=…` and shows *This site can't be reached*. **That is expected**: nothing is listening on your laptop. Look at the address bar: the `code` is a one-time **authorization code** that a real app would exchange for tokens within five minutes. Copy it if you intend to do Challenge C right away.
+### Step C: Sign in as your recruit
+
+7. Back on the **Login pages** tab, choose **View login page**. A new tab opens Cognito's hosted sign-in page, already carrying this app client's ID and allowed callback in its address. (No URL to copy from the whiteboard: the console builds the correct one for you.)
+8. Enter **Username** `recruitNN` → **Next** → the **temporary password** from the instructor → **Sign in**.
 
    ![Hosted login page: username step](images/m02-30-cognito-hosted-login.png)
 
    ![Password step](images/m02-31-cognito-password-step.png)
 
+9. Cognito asks for a **new password** because the account is in *Force change password* state. Choose one you will remember (10+ characters with upper case, lower case, a number and a symbol), type it twice, and submit. Do not reuse a real password.
+
    ![The forced new-password step](images/m02-32-cognito-new-password.png)
 
-   ![The redirect to the callback URL with the authorization code in the address bar](images/m02-33-cognito-callback.png)
+10. The browser jumps to `https://localhost:8080/callback?code=…` and shows **This site can't be reached**. **That is the success screen of this exercise.** Cognito did its job: it verified you and sent your browser to the app's registered callback with a one-time **authorization code**. There is simply no app running on your laptop to receive it. Look at the address bar: the `code` value is valid for **five minutes** and can be used **once**. Copy it now if you want to try Challenge C.
+
+    ![The redirect to the callback URL with the authorization code in the address bar](images/m02-33-cognito-callback.png)
+
+> [!TIP]
+> **If sign-in fails**
+> - *Incorrect username or password* on your **first** sign-in: check the recruit number (it is your participant number) and retype the temporary password. If it still fails, someone may already have used your recruit; tell the instructor rather than trying another number.
+> - *Temporary password has expired*: temporary passwords last 30 days from when the instructor created the users. The instructor resets it from the pool (Users → your recruit → Reset password).
+> - *An error was encountered with the requested page*: you edited the login URL. Close the tab and use **View login page** again.
 
 **🧩 Investigation checkpoint**
 
 - [ ] I can say which Cognito objects are **public** (issuer, discovery document, JWKS, login page, client ID) and which are **secret** (passwords, private signing keys, a confidential client's secret).
-- [ ] I can explain why an app client with no secret still cannot be abused to log in as someone else.
+- [ ] I can explain why seeing *This site can't be reached* meant the sign-in **worked**.
+- [ ] I can explain why an app client with no secret still cannot be abused to sign in as someone else (the user's password is still required, and the code can only go to the allowed callback).
 
 ---
 
 ## 🔎 Phase 8 — Inspect the OpenSearch domain (5 minutes)
 
 **Concept:** Managed knowledge bases (Mission 03) hide the vector store. An OpenSearch domain is that store with the lid off: you can see the nodes, the index and the vector field.
+
+> [!NOTE]
+> **This phase depends on a shared domain the instructor may not have created.** A small domain costs about $0.90 per day while it exists, so some classes skip it. Open **Amazon OpenSearch Service → Domains**: if `orbit-academy-search` is not listed, read this phase as a guided tour (the facts below describe exactly what you would see), skip Challenge D, and move on.
 
 1. Search for `OpenSearch` and open **Amazon OpenSearch Service → Domains**. Open **`orbit-academy-search`**.
 
@@ -502,7 +565,7 @@ Write one Logs Insights query over your log group that returns: number of invoca
 
 ### Challenge C · Token autopsy (Cognito + CloudShell)
 
-Within five minutes of signing in (Phase 7 step 6), exchange the authorization code for tokens. In CloudShell, replace the values and run:
+Within five minutes of signing in (Phase 7, step 10), exchange the authorization code for tokens. The **domain** is on the app client's **Login pages** tab (or in the address bar of the hosted login page); the **client ID** is on the app client page. In CloudShell, replace the values and run:
 
 ```bash
 DOMAIN=orbit-academy-XXXXX.auth.us-west-2.amazoncognito.com   # from App client → Login pages
@@ -546,6 +609,15 @@ Switch `MODEL_ID` to the Nova Micro inference profile `us.amazon.nova-micro-v1:0
 ### Challenge F · Configuration, not code
 
 Move `MODEL_ID` into an **environment variable** (Configuration → Environment variables) and read it with `os.environ["MODEL_ID"]`. Why is this the right place for a model ID and the wrong place for a client secret?
+
+---
+
+## 🔭 Production lens: the two numbers that matter most
+
+You met two facts today that run every production agent's budget and on-call rota.
+
+- **Tokens are the meter.** Your Lambda reported `inputTokens` and `outputTokens`. An agent re-sends its instructions and tool definitions on every model call, so input tokens dominate the bill. In Mission 06 you will cut an agent's input tokens by about 30% by removing two tools it never needed.
+- **Logs only help if you planned them.** Your `ORBIT telemetry:` lines were useful because you printed them on purpose. In Mission 06 the tool gate prints one JSON object per decision, and a single Logs Insights query turns those into an audit report. Decide what you will need to know at 2 a.m. *before* you write the code.
 
 ---
 
@@ -602,7 +674,8 @@ The instructor's OpenSearch domain (`t3.small.search`) costs about **$0.90 per d
 | AccessDenied persists after the policy | Policy is on the **role** (not the user), resource ARN is exactly the Nova Lite ARN, Region in the ARN is `us-west-2`; wait 10 s and retry |
 | `ValidationException … model identifier is invalid` | Typo in `MODEL_ID`, or you used a profile ID without the `us.` prefix |
 | Logs Insights returns nothing | Log group selected, time range *1h*, you invoked the function at least once |
-| Hosted login says *An error was encountered with the requested page* | Copy the login URL exactly from the whiteboard (client ID and redirect URI must match the app client) |
+| Hosted login says *An error was encountered with the requested page* | Open the page with **View login page** on the app client's **Login pages** tab instead of typing a URL |
+| *Temporary password has expired* | Ask the instructor to reset your recruit's password |
 | Cognito *Access denied* on Edit | Correct: students are read-only on the shared pool |
 | OpenSearch `sig` returns `403 … explicit deny` on PUT | Correct: the access policy allows the account only GET and HEAD |
 

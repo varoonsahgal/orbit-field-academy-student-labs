@@ -121,7 +121,14 @@ Every console click, every CLI command and every Lambda call to Bedrock becomes 
 
 1. Sign in to the AWS Console with the IAM user name and password your instructor gave you. The account is called **Training** (`962804699607`).
 2. In the top-right **Region selector** choose **United States (Oregon)**, `us-west-2`. Every mission uses this Region. The console remembers a Region *per service*, so glance at the selector each time you open a new service.
-3. Choose your unique identifier, `MY_ID`: your **class seat number plus two random digits**, all lowercase, no spaces, for example `s07x42`. Write it down. **Keep it for the whole course.**
+3. Choose your unique identifier, `MY​_ID`, and keep it for the whole course:
+
+   > [!IMPORTANT]
+   > **`MY​_ID` = the letter `p` + your two-digit participant number + the letter `x` + two digits you pick.** If you signed in as `participant-07`, your ID might be `p07x42`. Lowercase, no spaces, no hyphens or underscores, and never your real name. (The screenshots use the example IDs `s07x42` and `v06x11` from the verification runs.)
+   >
+   > **Never type the letters `MY​_ID` into AWS.** Every time a guide shows the placeholder, type your value. In the last class someone created a harness literally named `orbit_MY​_ID_agent`; nobody could tell whose it was. On the course website, enter your ID once in the **Mission ID** box and every placeholder on every page becomes your ID.
+   >
+   > Why the format matters: AgentCore harness names allow only letters, digits and `_`; gateway names allow only letters, digits and `-`. An ID made of lowercase letters and digits fits every service's rules.
 
 **Naming convention for this mission** (replace `MY_ID`):
 
@@ -460,6 +467,16 @@ Without the console, decode each ARN into *service, Region, account, resource ty
 3. `arn:aws:bedrock:us-west-2:962804699607:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0`
 4. `arn:aws:logs:us-west-2:962804699607:log-group:/aws/lambda/orbit-s07x42-hello:*`
 5. `arn:aws:cognito-idp:us-west-2:962804699607:userpool/us-west-2_TZHtlxeIE`
+
+---
+
+## 🔭 Production lens: why an AI course starts with IAM
+
+Every incident review of an AI agent eventually asks the same question: *what was it allowed to do?* The answer is never in the prompt. It is in the roles you read today.
+
+- **Least privilege is your blast radius.** An agent that is tricked into misbehaving can only do what its role allows. In Mission 06 you will watch a well-behaved model happily issue a refund it should not have; the roles decide how bad that day is.
+- **Explicit deny is the one rule nobody can argue with.** In Mission 06 you will use one `Deny` statement to make a safety filter impossible to switch off, the same evaluation rule you memorised in Phase 3.
+- **Trust policies are part of your attack surface.** The `aws:SourceArn` condition on the mystery role is what stops some *other* AgentCore resource from borrowing it (the confused-deputy problem from Challenge C).
 
 ---
 

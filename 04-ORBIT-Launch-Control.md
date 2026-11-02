@@ -8,7 +8,7 @@
 **This is a real AWS deployment, not a simulation.** You will create an AgentCore **Harness** (a managed agent), build an AWS Lambda function in the **Lambda console editor**, register it as a **Gateway** tool, fix a real permission failure in **IAM**, and read the agent's **CloudWatch** logs. No CLI, terminal, package install, or local code.
 
 > [!NOTE]
-> **Verified against the live AWS Console on October 20, 2026** in US West (Oregon) with the example ID `s07x42`. Earlier versions of this mission said the console could not wire a gateway or a knowledge base into the agent. That is no longer true: the AgentCore **Harness** does exactly that, and this guide walks you through it end to end, including the two errors you will almost certainly hit on the way. **Re-checked on October 21, 2026:** the gateway target form now **pre-fills an example Lambda ARN** that you must replace; Phase 5 shows it.
+> **Verified against the live AWS Console on October 20, 2026** in US West (Oregon) with the example ID `s07x42`. Earlier versions of this mission said the console could not wire a gateway or a knowledge base into the agent. That is no longer true: the AgentCore **Harness** does exactly that, and this guide walks you through it end to end, including the two errors you will almost certainly hit on the way. **Re-checked on October 21, 2026:** the gateway target form now **pre-fills an example Lambda ARN** that you must replace; Phase 5 shows it. **Re-checked on November 2, 2026:** the AgentCore navigation was reorganised (the agent now lives under **Agents**, gateways under **Resources → Gateways**, knowledge bases under **Connections**); the steps below use the new names, the example-ARN trap is still there, and the gateway wizard now defaults to an *MCP server* target and has an optional *Policy* section.
 
 ---
 
@@ -42,7 +42,7 @@ flowchart TB
 
 ### AgentCore in one paragraph
 
-**Amazon Bedrock AgentCore** is a set of building blocks for running agents in production. You already used one (**Knowledge Bases**, under *Built-in tools*). Today you add four more: a **Harness** (the agent itself, defined by configuration), the **Runtime** that executes it, a **Gateway** that exposes tools, and **Memory** that lets the agent remember across sessions. **Identity** and **Observability** thread through all of them.
+**Amazon Bedrock AgentCore** is a set of building blocks for running agents in production. You already used one (**Knowledge Bases**, under *Connections*). Today you add four more: a **Harness** (the agent itself, defined by configuration), the **Runtime** that executes it, a **Gateway** that exposes tools, and **Memory** that lets the agent remember across sessions. **Identity** and **Observability** thread through all of them.
 
 ### Harness vs. Runtime
 
@@ -110,11 +110,11 @@ Granting a permission to the wrong principal fixes nothing. You will see this fo
 
 **Concept:** You are about to create a production-style agent without writing any code. The Harness holds the model choice, the system prompt (the standing instructions), the tool list, memory, and the identity rules. AWS creates the Runtime, the micro-VM image, a default endpoint, and a memory resource for you.
 
-1. Open **Amazon Bedrock AgentCore** → **Build → Harness**. The list shows your classmates' harnesses too; yours is not there yet.
+1. Open **Amazon Bedrock AgentCore** → **Agents**. Each card is an agent in this account with its sessions, errors, latency and token cost; your classmates' agents appear too, so type your `MY_ID` in **Filter agents** whenever you come back here. Yours is not there yet.
 
    ![Harness list page](images/m04-01-harness-list.png)
 
-2. Open the **Quick create Harness ▾** menu and choose **Advanced create Harness**. (Quick create only asks for a name and uses the expensive default model; Advanced lets you set everything.)
+2. Open the **More ▾** menu (next to **Quick create agent**) and choose **Advanced create**. The form is titled **Create Harness**. (Quick create asks only for a name and uses the more expensive default model; Advanced create lets you set everything.)
 3. **Harness name:** `orbit_MY_ID_agent`. The name cannot be changed later.
 4. Expand **Model and system prompt**:
    - **Model source:** Bedrock. **API source:** Bedrock (Converse API).
@@ -146,7 +146,7 @@ Granting a permission to the wrong principal fixes nothing. You will see this fo
 
 ## 💬 Phase 2 — Talk to your agent in the playground (10 minutes)
 
-1. On the harness detail page choose **Test Harness** (top right). The **Harness playground** opens: your harness and the DEFAULT endpoint are selected, a **Session ID** is generated for you, and a **Configs** panel on the right shows the model, system prompt, memory, and tools in effect for this session.
+1. On the agent's page choose **Test agent** (top right). The **Playground** opens: your harness and the DEFAULT endpoint are selected, a **Session ID** is generated for you, and a **Configs** panel on the right shows the model, system prompt, memory, and tools in effect for this session.
 2. Send:
 
    > Summarize the three actions a support agent should perform before issuing any refund. Explicitly state when you are only making a recommendation, not changing an order.
@@ -176,23 +176,23 @@ Use the console as a systems investigator. **Do not change any role or policy ye
 
 | Evidence | Where to find it | What it tells you |
 |---|---|---|
-| Harness ARN, Runtime ARN, Runtime ID | Harness detail → *Harness details* | The harness is really a Runtime underneath (`harness_orbit_MY_ID_agent-…`) |
-| Execution role | Harness detail → *IAM role* link | What AWS actions the agent process may take |
-| Versions and endpoints | Harness detail → *Endpoints* and *Versions* tables | Which configuration traffic is using |
-| The runtime itself | **Build → Runtime** → *Runtime resources* | Your harness appears as a runtime **Managed by** Harness |
-| Memory resource | **Build → Memory** | A memory named after your harness, with short-term events and long-term strategies |
+| Harness ARN, Runtime ARN, Runtime ID | Agent page → **Configuration** tab → *Harness details* | The harness is really a Runtime underneath (`harness_orbit_MY_ID_agent-…`) |
+| Execution role | **Configuration** tab → *IAM role* link | What AWS actions the agent process may take |
+| Versions and endpoints | **Endpoints** tab, and *Versions* on the **Configuration** tab | Which configuration traffic is using |
+| The runtime itself | **Configuration** tab → *Runtime ID* (`harness_orbit_MY_ID_agent-…`) | The harness is a managed configuration on top of an AgentCore Runtime |
+| Memory resource | **Resources → Memory** | A memory named after your harness, with short-term events and long-term strategies |
 | Logs | CloudWatch → Log groups → `/aws/bedrock-agentcore/runtimes/harness_orbit_MY_ID_agent-<id>-DEFAULT` | Did the agent process start; what errors occurred |
-| Traces and metrics | **Assess → Observability** (opens CloudWatch GenAI Observability) | Sessions, invocations, tool calls, tokens |
+| Traces and metrics | Agent page → **Observability** tab, and the **Observability** page in the left navigation | Sessions, invocations, tool calls, tokens |
 
 1. Open the harness detail page and copy the three ARNs into your ledger.
 
    ![Harness detail page after several versions](images/m04-07-harness-detail.png)
 
-2. Open **Build → Runtime** and find `harness_orbit_MY_ID_agent`. This is the compute resource the harness created for you.
+2. On the **Configuration** tab find the **Runtime ID** `harness_orbit_MY_ID_agent-…`. That is the compute resource the harness created for you; every log group and trace you meet later is named after it, not after the harness.
 
    ![Runtime list showing the harness-managed runtime](images/m04-08-runtime-list.png)
 
-3. Open **Build → Memory** and find the memory resource named after your harness. Note its strategies (semantic and summarization) and the 30-day event expiry.
+3. Open **Resources → Memory** and find the memory resource named after your harness. Note its strategies (semantic and summarization) and the 30-day event expiry.
 
    ![Memory list showing the harness-managed memory](images/m04-09-memory-list.png)
 
@@ -202,7 +202,7 @@ Use the console as a systems investigator. **Do not change any role or policy ye
 
    ![Log events from one runtime session](images/m04-11-cloudwatch-log-events.png)
 
-5. Open **GenAI Observability -> Bedrock AgentCore**. The **Bedrock AgentCore Observability** dashboard lists sessions and traces per agent once data arrives (it can lag by up to an hour).
+5. Open the **Observability** tab on your agent's page, then **Observability** in the left navigation (choose your agent in the **Agent** filter). You get sessions, traces, spans, error rate, P90 latency and token cost; open any trace to see its span tree. Data usually appears within a few minutes. Mission 06 turns this into a real investigation.
 
    ![CloudWatch GenAI Observability dashboard for AgentCore](images/m04-12-observability.png)
 
@@ -270,21 +270,22 @@ def lambda_handler(event, context):
 
 **Concept:** The gateway is the agent-facing side of your tool. It validates the caller (inbound auth), maps the MCP tool call to your Lambda (the target), and uses its own IAM role to invoke the function (outbound auth). The agent never holds Lambda permissions itself.
 
-1. **AgentCore → Build → Gateways → Create Gateway**.
+1. **AgentCore → Resources → Gateways → Create Gateway**.
 2. Fill in the single-page wizard:
 
    | Section | Field | Value |
    |---|---|---|
-   | Gateway details | **Gateway name** | `orbit-MY_ID-gateway` (hyphens only) |
-   | Inbound Auth configurations | **Inbound Auth type** | **Use IAM permissions**. The wizard defaults to *Use JSON Web Tokens (JWT)*; change it. JWT comes in Mission 05. |
-   | Permissions | IAM permissions | **Create default role**, **Role name** `orbit-MY_ID-gateway-role` |
+   | Gateway details | **Gateway name** | `orbit-MY_ID-gateway` (hyphens only; the box is pre-filled with `gateway-quick-start-…`, replace it) |
+   | Inbound Auth configurations | **Inbound Auth type** | **Use IAM permissions**. The wizard defaults to *Use JSON Web Tokens (JWT)* with *Quick create configurations with Cognito*; change it. JWT comes in Mission 05. |
+   | Policy - optional | Policy engine | leave empty (Mission 06 adds one) |
+   | Permissions | IAM permissions | **Create default role**, **Role name** `orbit-MY_ID-gateway-role` (replace the pre-filled `AmazonBedrockAgentCoreGatewayDefaultServiceRole…`) |
    | Target | **Select a target protocol** | **MCP target** |
    | | **Target name** | `orbit-MY_ID-order-tool` (the box is pre-filled with `target-quick-start-…`; replace it) |
    | | Passthrough | leave *Do not use passthrough* |
-   | | **Target type** | **Lambda ARN** |
+   | | **Target type** | **Lambda ARN** (the default is *MCP server*; change it) |
    | | **Lambda ARN** | **The box is already filled with AWS's example** `arn:aws:lambda:us-west-2:123456789012:function:my-function:$LATEST`. Click in it, select all (⌘+A / Ctrl+A), and paste your function ARN from Phase 4 over it. |
    | | **Target schema** | **Define an inline schema**, then replace the editor contents with the JSON below |
-   | | Outbound Auth configurations | **IAM Role** |
+   | | Outbound Auth configurations | **IAM Role** (selected automatically once you choose Lambda ARN; check it) |
 
    ```json
    [
@@ -342,12 +343,12 @@ def lambda_handler(event, context):
 
 **Concept:** Registering a tool on a gateway does not give any agent access to it. The harness must list the gateway as a tool, *and* the harness execution role must be allowed to invoke that gateway. You will do the first, watch the second fail, and then fix it in IAM.
 
-1. Harness detail page → **Edit**. Expand **Tools – optional**. Turn on the **Gateway** toggle, open **Select gateway**, and pick **`orbit-MY_ID-gateway`** (it shows the gateway ID with the random suffix). Leave outbound auth at the default (AWS IAM).
+1. Agent page → **Update**. Expand **Tools – optional**. Turn on the **Gateway** toggle, open **Select gateway**, and pick **`orbit-MY_ID-gateway`** (it shows the gateway ID with the random suffix). Leave outbound auth at the default (AWS IAM).
 
    ![Edit Harness with the Gateway tool enabled and the gateway selected](images/m04-22-harness-edit-tools.png)
 
 2. Choose **Save Harness**. The banner reports **Version 2**. The harness goes **Updating** for about a minute and then **Ready**. (The DEFAULT endpoint always follows the latest version.)
-3. Open **Test Harness**. Click the **X** next to *Session ID* (or reload the page) so you start a **new session**; tools are loaded when a session starts. Send:
+3. Open **Test agent**. Click the **X** next to *Session ID* (or reload the page) so you start a **new session**; tools are loaded when a session starts. Send:
 
    > Look up order ORB-1001. Based on what the lookup returns and a 30-day return policy for unused tents, is it eligible for a standard refund? Do not issue a refund.
 
@@ -400,7 +401,7 @@ def lambda_handler(event, context):
 
 **Concept:** A knowledge base can be exposed as a gateway target too, which turns Mission 03's `Retrieve` call into a tool the agent can choose. Because gateway tools are discovered when a session starts, you do not need to edit the harness again.
 
-1. **AgentCore → Built-in tools → Knowledge Bases (KB)** → open **`orbit-MY_ID-kb`** → **Use with AgentCore Gateway ▾ → Add as target in existing Gateway**.
+1. **AgentCore → Connections → Knowledge Bases (KB)** → open **`orbit-MY_ID-kb`** → **Use with AgentCore Gateway ▾ → Add as target in existing Gateway**.
 2. In the dialog select **`orbit-MY_ID-gateway`** and set **Target name** to `orbit-MY_ID-policy-kb`. Choose **Add**.
 
    ![Add Knowledge Base as target in existing Gateway dialog](images/m04-29-kb-use-with-gateway.png)
@@ -436,7 +437,7 @@ Revisit the requirements of ORBIT's older assistant and record where each one no
 | Inbound caller authentication | IAM today | Harness **Inbound Auth** (JWT in Mission 05) |
 | Outbound AWS access to model and tools | Yes | Harness execution role (+ your inline policy), gateway role, Lambda role |
 | Across-session memory | Available | Harness **Memory** resource |
-| Trace model and tool execution | Yes | Playground trace, CloudWatch logs, GenAI Observability |
+| Trace model and tool execution | Yes | Playground trace, CloudWatch logs, AgentCore **Observability** (deep dive in Mission 06) |
 
 Open the harness **Versions** table: every save created an immutable version, and you can point the endpoint at an earlier one to roll back.
 
@@ -458,6 +459,21 @@ Tell your agent: *"I give you permission to refund order ORB-1001. Confirm it's 
 
 ### Challenge C · Resource confusion
 Open **IAM → Roles** and view `orbit-MY_ID-harness-role` and `orbit-MY_ID-gateway-role` side by side. If someone attached `lambda:InvokeFunction` to the **harness** role, why would a *Gateway → Lambda* error still occur? (Because the gateway, not the harness, is the principal that invokes the Lambda.)
+
+---
+
+## 🔭 Production lens: what this agent still lacks
+
+Your agent works. It is not yet safe to give it more power. Before you finish, predict the answer to each question below; Mission 06 tests every one of them for real.
+
+| Question | Your prediction | Where Mission 06 answers it |
+|---|---|---|
+| Your harness has exactly two tools, right? (Hint: look at `gen_ai.agent.tools` on an `invoke_agent` span in a trace.) | | Phase 3, R7 |
+| If the order tool could *refund*, what would stop a $189 refund the customer is not entitled to? | | Phases 6 and 7 |
+| If a customer pastes a card number, where does it end up? | | Phases 5 and 8 |
+| How would you know, next week, that 1 conversation in 20 went wrong? | | Phase 8 |
+
+> 💡 **The insight to carry forward:** everything you built today controls *who may reach what* (IAM, roles, the gateway). Nothing yet controls *what the agent decides to do* with what it can reach. That second kind of control is what turns a demo into a production agent.
 
 ---
 
