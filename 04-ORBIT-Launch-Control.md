@@ -8,7 +8,7 @@
 **This is a real AWS deployment, not a simulation.** You will create an AgentCore **Harness** (a managed agent), build an AWS Lambda function in the **Lambda console editor**, register it as a **Gateway** tool, fix a real permission failure in **IAM**, and read the agent's **CloudWatch** logs. No CLI, terminal, package install, or local code.
 
 > [!NOTE]
-> **Verified against the live AWS Console on October 20, 2026** in US West (Oregon) with the example ID `s07x42`. Earlier versions of this mission said the console could not wire a gateway or a knowledge base into the agent. That is no longer true: the AgentCore **Harness** does exactly that, and this guide walks you through it end to end, including the two errors you will almost certainly hit on the way. **Re-checked on October 21, 2026:** the gateway target form now **pre-fills an example Lambda ARN** that you must replace; Phase 5 shows it. **Re-checked on November 2, 2026:** the AgentCore navigation was reorganised (the agent now lives under **Agents**, gateways under **Resources → Gateways**, knowledge bases under **Connections**); the steps below use the new names, the example-ARN trap is still there, and the gateway wizard now defaults to an *MCP server* target and has an optional *Policy* section.
+> **Verified against the live AWS Console on October 20, 2026** in US West (Oregon) with the example ID `s07x42`. Earlier versions of this mission said the console could not wire a gateway or a knowledge base into the agent. That is no longer true: the AgentCore **Harness** does exactly that, and this guide walks you through it end to end, including the two errors you will almost certainly hit on the way. **Re-checked on October 21, 2026:** the gateway target form now **pre-fills an example Lambda ARN** that you must replace; Phase 5 shows it. **Re-checked on November 2, 2026:** the AgentCore navigation was reorganised (the agent now lives under **Agents**, gateways under **Resources → Gateways**, knowledge bases under **Connections**); the steps below use the new names, the example-ARN trap is still there, and the gateway wizard now defaults to an *MCP server* target and has an optional *Policy* section. **Re-run end to end on November 3, 2026** (example ID `v04x11`): every screenshot was retaken in the current console. What changed: harness status now reads **Active** (not *Ready*) and takes 2–3 minutes, the create page asks you not to leave while it provisions, the playground opens the tool side panel by itself, versions live in a *Versioned configurations* dropdown, and the Lambda Test tab has an *Invocation type* choice. The AssumeRole race, the example-ARN trap and the 403 on the gateway all still happen exactly as described.
 
 ---
 
@@ -131,15 +131,15 @@ Granting a permission to the wrong principal fixes nothing. You will see this fo
 7. Expand **Inbound Auth** and keep **Use IAM permissions**. That means only AWS identities in this account (such as you, in the console) can call this agent. Mission 05 builds a second harness protected by OAuth tokens instead.
 8. Expand **Permissions**: keep **Create default role** and change **Role name** to `orbit-MY_ID-harness-role`.
 
-   ![Advanced create Harness form filled in for s07x42](images/m04-02-harness-create-form.png)
+   ![Advanced create Harness form filled in for v04x11](images/m04-02-harness-create-form.png)
 
-9. Choose **Create Harness**. The detail page opens with a green banner: *orbit_MY_ID_agent, Version 1 was successfully created. A default endpoint is also in progress…* Status shows **Creating**, then **Ready** after roughly 30–60 seconds. Record the **Harness ARN** and the **Harness ID** (the name plus a random suffix, for example `orbit_s07x42_agent-TZvwF2mzZ6`).
+9. Choose **Create Harness**. A blue banner says *orbit_MY_ID_agent is being provisioned… Don't leave this page as doing so cancels provisioning*, so stay on the page until it moves on by itself (about 30 seconds). The detail page then opens with a green banner: *orbit_MY_ID_agent, Version 1 was successfully created. A default endpoint is also in progress…* Status shows **Creating**, then **Active** after about 2–3 minutes (the managed memory is what takes the time; refresh the page to see it change). Record the **Harness ARN** and the **Harness ID** (the name plus a random suffix, for example `orbit_s07x42_agent-TZvwF2mzZ6`).
 
    ![Harness created: version 1, DEFAULT endpoint, execution role](images/m04-04-harness-created.png)
 
 **Checkpoint**
 
-- [ ] My harness is **Ready**, with **Version 1** and an endpoint named **DEFAULT**.
+- [ ] My harness is **Active**, with **Version 1** and an endpoint named **DEFAULT**.
 - [ ] I can say which model and which inference profile it uses, and I know the execution role's name.
 
 ---
@@ -178,7 +178,7 @@ Use the console as a systems investigator. **Do not change any role or policy ye
 |---|---|---|
 | Harness ARN, Runtime ARN, Runtime ID | Agent page → **Configuration** tab → *Harness details* | The harness is really a Runtime underneath (`harness_orbit_MY_ID_agent-…`) |
 | Execution role | **Configuration** tab → *IAM role* link | What AWS actions the agent process may take |
-| Versions and endpoints | **Endpoints** tab, and *Versions* on the **Configuration** tab | Which configuration traffic is using |
+| Versions and endpoints | **Endpoints** tab, and the *Versioned configurations* dropdown on the **Configuration** tab | Which configuration traffic is using |
 | The runtime itself | **Configuration** tab → *Runtime ID* (`harness_orbit_MY_ID_agent-…`) | The harness is a managed configuration on top of an AgentCore Runtime |
 | Memory resource | **Resources → Memory** | A memory named after your harness, with short-term events and long-term strategies |
 | Logs | CloudWatch → Log groups → `/aws/bedrock-agentcore/runtimes/harness_orbit_MY_ID_agent-<id>-DEFAULT` | Did the agent process start; what errors occurred |
@@ -186,11 +186,11 @@ Use the console as a systems investigator. **Do not change any role or policy ye
 
 1. Open the harness detail page and copy the three ARNs into your ledger.
 
-   ![Harness detail page after several versions](images/m04-07-harness-detail.png)
+   ![Harness detail page, Configuration tab, after two versions](images/m04-07-harness-detail.png)
 
 2. On the **Configuration** tab find the **Runtime ID** `harness_orbit_MY_ID_agent-…`. That is the compute resource the harness created for you; every log group and trace you meet later is named after it, not after the harness.
 
-   ![Runtime list showing the harness-managed runtime](images/m04-08-runtime-list.png)
+   ![Harness details panel with the Runtime ID and Runtime ARN of the harness-managed runtime](images/m04-08-runtime-list.png)
 
 3. Open **Resources → Memory** and find the memory resource named after your harness. Note its strategies (semantic and summarization) and the 30-day event expiry.
 
@@ -251,7 +251,7 @@ def lambda_handler(event, context):
 
    **How this connects to the gateway later:** when AgentCore Gateway invokes a Lambda tool, it passes the tool's input properties as the `event` (so `event["order_id"]`), and puts the tool name and gateway IDs in `context.client_context.custom`. The same code therefore works from a manual test and from the agent.
 
-5. Open the **Test** tab. Under *Test event action* keep **Create new event**, set **Event name** to `my_lookup_1001`, replace the Event JSON with `{"order_id": "ORB-1001"}`, choose **Save**, then choose **Test**.
+5. Open the **Test** tab. Under *Test event action* keep **Create new event** and leave **Invocation type** at **Synchronous** (the tool must return its answer to the caller), set **Event name** to `my_lookup_1001`, replace the Event JSON with `{"order_id": "ORB-1001"}`, choose **Save**, then choose **Test**.
 
    ![Test event my_lookup_1001 with the order_id JSON](images/m04-15-lambda-test-event.png)
 
@@ -344,13 +344,13 @@ def lambda_handler(event, context):
 **Concept:** Registering a tool on a gateway does not give any agent access to it. The harness must list the gateway as a tool, *and* the harness execution role must be allowed to invoke that gateway. You will do the first, watch the second fail, and then fix it in IAM.
 
 > [!NOTE]
-> **Console change, late October 2026:** when you select a gateway in the harness form, the console may now attach an `AmazonBedrockAgentCoreHarnessGatewayPolicy_…` with `bedrock-agentcore:InvokeGateway` to the execution role for you. If your agent loads its tools without the 403 below, open **IAM → your harness role** and find that policy: it is the same permission this phase teaches, added automatically. Read the steps anyway; on roles you create yourself, nobody adds it for you.
+> **Console change, late October 2026:** when you select a gateway in the harness form, the console may now attach an `AmazonBedrockAgentCoreHarnessGatewayPolicy_…` with `bedrock-agentcore:InvokeGateway` to the execution role for you. In the run verified on 3 November 2026, adding the gateway later with **Update** (as this phase does) attached nothing and the 403 below appeared exactly as described. If your agent does load its tools without the 403, open **IAM → your harness role** and find that policy: it is the same permission this phase teaches, added automatically. Read the steps anyway; on roles you create yourself, nobody adds it for you.
 
-1. Agent page → **Update**. Expand **Tools – optional**. Turn on the **Gateway** toggle, open **Select gateway**, and pick **`orbit-MY_ID-gateway`** (it shows the gateway ID with the random suffix). Leave outbound auth at the default (AWS IAM).
+1. Agent page → **Update**. Expand **Tools – optional**. Turn on the **Gateway** toggle, open **Select gateway**, and pick **`orbit-MY_ID-gateway`** (it shows the gateway ID with the random suffix). The gateway appears as a chip under the box with its own **Outbound Auth configurations**; leave it at **IAM role**.
 
    ![Edit Harness with the Gateway tool enabled and the gateway selected](images/m04-22-harness-edit-tools.png)
 
-2. Choose **Save Harness**. The banner reports **Version 2**. The harness goes **Updating** for about a minute and then **Ready**. (The DEFAULT endpoint always follows the latest version.)
+2. Choose **Save Harness**. The banner reports **Version 2**. The harness goes **Updating** for 2–3 minutes and then **Active** (refresh to see it). (The DEFAULT endpoint always follows the latest version.)
 3. Open **Test agent**. Click the **X** next to *Session ID* (or reload the page) so you start a **new session**; tools are loaded when a session starts. Send:
 
    > Look up order ORB-1001. Based on what the lookup returns and a 30-day return policy for unused tents, is it eligible for a standard refund? Do not issue a refund.
@@ -392,7 +392,7 @@ def lambda_handler(event, context):
 
    ![Agent trace showing the lookup_order tool call and the read-only answer](images/m04-27-harness-tool-call.png)
 
-7. Click the tool step in the trace to open the side panel with the exact **Input** (`{"order_id": "ORB-1001"}`) and **Output** (the Lambda response, including *"training_only": true*).
+7. As soon as the tool runs, a side panel slides open over the chat with the exact **Input** (`{"order_id": "ORB-1001"}`) and **Output** (the Lambda response, including *"training_only": true*). Close it with **X** to read the answer; click the tool step in the trace to open it again.
 
    ![Trace drawer with the tool input and output](images/m04-28-harness-tool-trace.png)
 
@@ -419,7 +419,7 @@ def lambda_handler(event, context):
 
    ![Agent calling the knowledge base Retrieve tool and quoting policy ORB-RET-101](images/m04-31-harness-kb-answer.png)
 
-   The trace shows **Orbit-MY_ID-Policy-Kb Retrieve**, and the answer quotes the 30-day clause from *ORB-RET-101*. Open the step to see the retrieval query the agent wrote and the chunk it got back, including the `documentId` `returns-MY_ID-v1`.
+   The trace shows **Orbit-MY_ID-Policy-Kb Retrieve**, and the answer quotes the 30-day clause from *ORB-RET-101*. The side panel opens on its own again (click the step to reopen it after closing): it shows the retrieval query the agent wrote and the chunk it got back, including the `documentId` `returns-MY_ID-v1`.
 
    ![Trace drawer with the retrieval query and the returned chunk](images/m04-32-harness-kb-trace.png)
 
@@ -442,9 +442,9 @@ Revisit the requirements of ORBIT's older assistant and record where each one no
 | Across-session memory | Available | Harness **Memory** resource |
 | Trace model and tool execution | Yes | Playground trace, CloudWatch logs, AgentCore **Observability** (deep dive in Mission 06) |
 
-Open the harness **Versions** table: every save created an immutable version, and you can point the endpoint at an earlier one to roll back.
+On the harness **Configuration** tab open the **Versioned configurations** dropdown: every save created an immutable version with its own timestamp. The DEFAULT endpoint follows the latest one; to roll back you point an endpoint at an earlier version (**Endpoints** tab → *Endpoint details* → **Edit**).
 
-![Harness Versions table: one immutable version per save](images/m04-33-harness-versions.png)
+![Versioned configurations dropdown: one immutable version per save](images/m04-33-harness-versions.png)
 
 **Boss challenge — the false migration:** an engineer says *"We created a harness, so our Classic Bedrock Agent is migrated."* What evidence disproves it? Look for a missing system prompt, a knowledge base that is not a gateway target, a tool with no schema, and an execution role that cannot invoke the gateway. **Framework portability** (the loop is managed) does not imply **IAM portability** (every role must be rebuilt with least privilege).
 
@@ -524,7 +524,7 @@ A class of 25 therefore spends roughly **$3–7** on this mission. Idle resource
 
 **Cleanup order (do this after Mission 05, so you can compare the two harnesses):**
 
-1. **Harness:** AgentCore → Harness → select `orbit_MY_ID_agent` → **Delete**. This also deletes its runtime, DEFAULT endpoint and managed memory.
+1. **Harness:** AgentCore → **Agents** → filter by `MY_ID` → open `orbit_MY_ID_agent` → **⋮** (top right) → **Delete**. This also deletes its runtime, DEFAULT endpoint and managed memory.
 2. **Gateway:** open `orbit-MY_ID-gateway` → delete both **targets** → then **Delete** the gateway.
 3. **Lambda:** delete `orbit-MY_ID-order-lookup`.
 4. **IAM roles:** delete `orbit-MY_ID-harness-role`, `orbit-MY_ID-gateway-role`, and the auto-created `orbit-MY_ID-order-lookup-role-…` **only after** the resources that use them are gone.

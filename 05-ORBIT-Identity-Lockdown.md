@@ -8,7 +8,7 @@
 **Nothing runs on your laptop.** This mission uses Amazon Cognito, AgentCore Harness, AWS Secrets Manager, IAM, the Lambda browser editor and Test tab, and CloudWatch. There is no CLI, terminal, browser plug-in, or external HTTP tool.
 
 > [!NOTE]
-> **Re-verified against the live AWS Console on October 25, 2026** in US West (Oregon). Screenshots show the example IDs `s07x42` and `i25k10`; yours will show your own `MY_ID`. What changed in this edition: the test client now proves **five** outcomes instead of three (a tampered token and a wrong-scope token were added), the HTTP-status guide matches what AgentCore really returns, and the Harness form's new defaults (managed Memory switched on, *Allowed clients* pre-ticked) are called out where you will meet them.
+> **Re-verified against the live AWS Console on October 25, 2026** in US West (Oregon). Screenshots show the example IDs `s07x42` and `i25k10`; yours will show your own `MY_ID`. What changed in this edition: the test client now proves **five** outcomes instead of three (a tampered token and a wrong-scope token were added), the HTTP-status guide matches what AgentCore really returns, and the Harness form's new defaults (managed Memory switched on, *Allowed clients* pre-ticked) are called out where you will meet them. **Re-checked on November 3, 2026** (example ID `v05x11`): the Cognito, Secrets Manager, Lambda and IAM screens are unchanged; the three harness screenshots were retaken in the new AgentCore console, the harness status now reads **Active**, and all five test outcomes (200 / 403 / 403 / 500 / 500) still match the table in Phase 5.
 
 ---
 
@@ -383,7 +383,7 @@ Notice the dotted line from Cognito to the authorizer: the guard only reads the 
 
    ![Advanced create Harness form for the secure harness](images/m05-12-harness-secure-create.png)
 
-8. **Create Harness**. Wait for **Ready** (a few minutes: about 5 in the October 2026 run; refresh the page). On the detail page expand **Inbound Auth** and confirm it shows **JSON Web Tokens (JWT)**, your discovery URL, your client ID and your scope. Record the **Harness ARN**.
+8. **Create Harness**. Stay on the page while the *being provisioned* banner shows, then wait for **Active** (about a minute without memory in the November 2026 run; refresh the page). On the detail page expand **Inbound Auth** and confirm it shows **JSON Web Tokens (JWT)**, your discovery URL, your client ID and your scope. Record the **Harness ARN**.
 
    ![Secure harness detail page with the Inbound Auth panel showing the JWT settings](images/m05-15-harness-secure-inbound.png)
 
@@ -673,7 +673,7 @@ flowchart TD
     R -->|"200"| OK["✅ Accepted"]
     R -->|"403 AccessDeniedException"| NOTOK["Hop 3 · No token, or not a JWT"]
     R -->|"500 UnrecognizedClientException"| JWT["Hop 3 · Real token refused:<br/>discovery URL, Allowed clients,<br/>Allowed scopes"]
-    R -->|"other 5xx"| RUN["Inside the harness:<br/>Ready? model access? CloudWatch"]
+    R -->|"other 5xx"| RUN["Inside the harness:<br/>Active? model access? CloudWatch"]
     classDef bad fill:#ffe7e7,stroke:#c74e4e,color:#5b2222
     class IAM,TO,COG,NOTOK,JWT,RUN bad
 ```
@@ -687,7 +687,7 @@ flowchart TD
 | `token_status` 404 or a DNS error | token URL | Must be the **domain** + `/oauth2/token`, not the issuer URL |
 | `good` returns `403` `AccessDeniedException` | AgentCore inbound (hop 3) | The `Authorization` header wasn't sent. Did the code change? |
 | `good` returns `500` `UnrecognizedClientException` | AgentCore inbound JWT (hop 3) | A real token was refused. Discovery URL points at the **same** pool; **Allowed clients** has this exact client ID; **Allowed scopes** is `orbit-MY_ID-api/invoke`; **Allowed audiences** is **unticked** |
-| `good` returns another 5xx with a body | Harness process or model (hop 4) | Harness status Ready; execution role; CloudWatch log group `/aws/bedrock-agentcore/runtimes/harness_orbit_MY_ID_secure-…` |
+| `good` returns another 5xx with a body | Harness process or model (hop 4) | Harness status Active; execution role; CloudWatch log group `/aws/bedrock-agentcore/runtimes/harness_orbit_MY_ID_secure-…` |
 | `Task timed out after 3.00 seconds` | Lambda timeout | Phase 5, Step A, item 3 |
 | `missing`, `forged`, `tampered` or `wrong-scope` returns **200** | Security misconfiguration | **Stop.** The harness is not enforcing JWT, or not checking scope. Check Phase 4 |
 | *The user pool cannot be deleted because deletion protection is activated* | Cognito cleanup | Tick **Deactivate deletion protection** (and **Delete Cognito domain**) in the Delete dialog (cleanup step 4) |
