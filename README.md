@@ -8,14 +8,14 @@ account in **US West (Oregon)**, and every resource you create carries your pers
 **Read the missions on the course website:** <https://varoonsahgal.github.io/orbit-field-guide/>. Enter your
 `MY_ID` once there and every command, policy and name on every page is personalised for you.
 
-> **Verified against the live AWS Console between October 20 and November 2, 2026.** The screenshots in
+> **Verified against the live AWS Console between October 20 and November 3, 2026.** The screenshots in
 > `images/` are from the verification runs (example participants `s07x42` and `v06x11`). AWS reorganised the
 > AgentCore console in late October 2026; the guides use the new menu names. If a button has moved, look for
 > the same words nearby.
 
 ## Mission sequence
 
-Run the missions in order; each one builds on the last.
+Run the missions in order; each one builds on the last. Missions 01–02 are optional foundations for people new to AWS; the core path is 03–08.
 
 | # | Mission | Course module | What you build or inspect | Time |
 |---|---|---|---|---|
@@ -25,6 +25,8 @@ Run the missions in order; each one builds on the last.
 | 04 | [LAUNCH CONTROL](04-ORBIT-Launch-Control.md) | 3 · AgentCore Architecture · 4 · Migration · 6 · Tools and Gateway | An AgentCore Harness, a Lambda tool through AgentCore Gateway, the knowledge base as a gateway target, the four-principals permission fix, observability | 120–150 min |
 | 05 | [IDENTITY LOCKDOWN](05-ORBIT-Identity-Lockdown.md) | 5 · Authentication with Cognito | Your own Cognito M2M app identity, a JWT-protected Harness, Secrets Manager, a Lambda test client proving accepted and rejected calls | 110–140 min |
 | 06 | [MISSION ASSURANCE](06-ORBIT-Mission-Assurance.md) | Production readiness | A refund tool, then five controls around it (allowed tools and limits, a Bedrock Guardrail made mandatory with IAM, Cedar policy on the gateway in log-only then enforce mode, a lifecycle-hook action gate), observability with Logs Insights, and live evaluations with a custom LLM-as-a-judge | 150–180 min |
+| 07 | [HULL BREACH](07-ORBIT-Hull-Breach.md) | Agent security | Build an insecure support copilot the hackathon way, then exploit and seal five breaches: a secret in the prompt, indirect prompt injection through a ticket, a poisoned third-party tool, shared and poisoned long-term memory, and an over-privileged role reachable through the shell | 165–195 min |
+| 08 | [CONSTELLATION](08-ORBIT-Constellation.md) | Multi-agent systems | A crew of three agents: an analyst with a code interpreter, a scout with a browser, a commander that delegates through a gateway and waits for a human approval desk; trust boundaries, a reckless-commander drill, and the economics of a crew | 150–180 min |
 
 Each mission ends with **challenge exercises** for people who finish early and a **cleanup** list.
 Missions 03–05 have **field notes** (`companionguides/`): question-and-answer companions for the concepts behind each step.
@@ -39,8 +41,8 @@ Missions 03–05 have **field notes** (`companionguides/`): question-and-answer 
 
 ## Keep a ledger
 
-Each mission has a *resource ledger* table. Fill it in as you go: IDs, ARNs and names flow from one mission to the next (your Lambda role from Mission 01 is used in Mission 02; your knowledge base from Mission 03 is attached to the agent in Mission 04; Mission 06 upgrades the Mission 04 agent, gateway and Lambda).
+Each mission has a *resource ledger* table. Fill it in as you go: IDs, ARNs and names flow from one mission to the next (your Lambda role from Mission 01 is used in Mission 02; your knowledge base from Mission 03 is attached to the agent in Mission 04; Mission 06 upgrades the Mission 04 agent, gateway and Lambda; Missions 07 and 08 build their own agents and can be run after 06 in either order).
 
 ## Costs
 
-The whole six-mission sequence costs roughly **$0.50 per participant** at November 2026 list prices (Missions 01 and 02 are essentially free; the model calls, evaluations and policy checks in 03–06 are cents). Two things keep billing while idle, and both cleanups remove them: a Secrets Manager secret ($0.40 per month, Mission 05) and an *enabled* evaluation configuration (Mission 06), which scores every new session of your agent.
+The whole eight-mission sequence costs roughly **$1 per participant** at November 2026 list prices (Missions 01 and 02 are essentially free; the model calls, evaluations and policy checks in 03–06 are cents). Two things keep billing while idle, and both cleanups remove them: a Secrets Manager secret ($0.40 per month, Mission 05) and an *enabled* evaluation configuration (Mission 06), which scores every new session of your agent.

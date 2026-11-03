@@ -438,7 +438,7 @@ R1 → Cedar policy (amount limit) and/or a hook routing large refunds to a huma
 
     Name it `orbit-MY_ID-assurance`, create it, wait 30 seconds, and run R4 and R5 again (new sessions each).
 
-    ![Guardrail blocks the card number and the legal question: no tokens, about 300 ms](images/m06-06-guardrail-block.png)
+    ![The guardrail blocks the card number before the model runs: no tokens, about 300 ms](images/m06-06-guardrail-block.png)
 
     Both now return the blocked message. The token chips show **no input or output tokens** and the latency is about **300 ms**: the model never ran. Blocking bad requests *early* protects your bill as well as your customers.
 
@@ -517,28 +517,28 @@ The gateway's own role will call the policy engine on every tool call, so it nee
 
    ![Natural-language prompt generating a valid Cedar forbid policy](images/m06-12-policy-natural-language.png)
 
-5. **Switch to Code** and create these four policies, one at a time, replacing `GATEWAY_ARN` with your gateway resource ARN and `MY_ID` with yours. Give each the name shown.
+5. **Switch to Code** and create these four policies, one at a time, replacing `GATEWAY_ARN` with your gateway resource ARN and `MY_ID` with yours. Give each the name shown. **Policy names must be unique across the whole AWS account, not just inside your engine**: if a classmate already created `allow_lookup`, yours fails with *Policy with the same name already exists*. That is why every name starts with your `MY_ID`.
 
-   `allow_policy_kb` — the knowledge base stays readable (a target-scoped action covers every tool on that target):
+   `MY_ID_allow_policy_kb` — the knowledge base stays readable (a target-scoped action covers every tool on that target):
 
    ```text
    permit(principal, action in AgentCore::Action::"orbit-MY_ID-policy-kb", resource == AgentCore::Gateway::"GATEWAY_ARN");
    ```
 
-   `allow_lookup` — anyone the gateway authenticates may look up orders:
+   `MY_ID_allow_lookup` — anyone the gateway authenticates may look up orders:
 
    ```text
    permit(principal, action == AgentCore::Action::"orbit-MY_ID-order-tool___lookup_order", resource == AgentCore::Gateway::"GATEWAY_ARN");
    ```
 
-   `allow_small_refunds` — refunds up to $50.00 (5,000 cents) only:
+   `MY_ID_allow_small_refunds` — refunds up to $50.00 (5,000 cents) only:
 
    ```text
    permit(principal, action == AgentCore::Action::"orbit-MY_ID-order-tool___issue_refund", resource == AgentCore::Gateway::"GATEWAY_ARN")
    when { context.input.amount_cents <= 5000 };
    ```
 
-   `orbit_ids_only` — order tools only accept IDs that start with `ORB-`:
+   `MY_ID_orbit_ids_only` — order tools only accept IDs that start with `ORB-`:
 
    ```text
    forbid(principal, action in [AgentCore::Action::"orbit-MY_ID-order-tool___lookup_order", AgentCore::Action::"orbit-MY_ID-order-tool___issue_refund"], resource == AgentCore::Gateway::"GATEWAY_ARN")
@@ -563,11 +563,11 @@ The gateway's own role will call the policy engine on every tool call, so it nee
    | sort @timestamp desc
    ```
 
-   In the verification run the lookup showed **ALLOW** by `allow_lookup-…`, and the refund showed **DENY** with *No policy applies to the request (denied by default).* The full record also names the **principal** (`AgentCore::IamEntity`, the harness role) and the evaluation latency (about **40 ms**). That is shadow mode working: you now know your rules would have stopped exactly the call you wanted stopped, and nothing else, before anyone was affected.
+   In the verification run the lookup showed **ALLOW** by `MY_ID_allow_lookup-…`, and the refund showed **DENY** with *No policy applies to the request (denied by default).* The full record also names the **principal** (`AgentCore::IamEntity`, the harness role) and the evaluation latency (about **40 ms**). That is shadow mode working: you now know your rules would have stopped exactly the call you wanted stopped, and nothing else, before anyone was affected.
 
 8. **Enforce.** Choose **Associate Gateway** again, pick the same gateway, choose **Enable enforcement**, and associate. The engine's table now shows **Enforced**.
 
-   ![Policy engine with four verified policies and the gateway in Enforced mode](images/m06-13-policy-engine.png)
+   ![Policy engine with verified policies and the gateway in Enforced mode (the verification gateway had no knowledge base, so it needed no KB permit; its names predate the MY_ID prefix)](images/m06-13-policy-engine.png)
 
 9. Rerun **R1** and **R2** (new sessions). R2 still refunds $45. R1's refund call is refused; open the failed tool step in the trace to read *Tool execution failed: Tool Execution Denied: Tool call not allowed due to policy enforcement [No policy applies to the request (denied by default).]* The agent tells the customer it cannot complete the refund.
 
@@ -581,7 +581,7 @@ The gateway's own role will call the policy engine on every tool call, so it nee
 - [ ] I found a **DENY** in the gateway log *while* the refund still succeeded (log-only), and I can explain why teams run new rules that way first.
 - [ ] I can explain *default deny* and why the knowledge-base permit was necessary.
 
-<details><summary>✅ Answer: what if you had forgotten <code>allow_policy_kb</code>?</summary>
+<details><summary>✅ Answer: what if you had forgotten <code>MY_ID_allow_policy_kb</code>?</summary>
 
 With default deny, the knowledge-base tools match no `permit`, so `PartiallyAuthorizeActions` removes them from the tool list. The agent silently loses its policy evidence and starts answering from memory. That is why new policy engines go through log-only first: the decision log would have shown DENY for every `Retrieve` before anyone noticed missing citations.
 
@@ -857,8 +857,9 @@ If Mission 05's JWT-protected harness also used this gateway, which of today's c
 | Every call fails *with an explicit deny* after Phase 5 Step D | The ARN in `RequireMyGuardrail` must be the guardrail ARN **plus `:1`** (the version), and the harness must still send `guardrailConfig` with `"guardrailVersion": "1"`. |
 | Guardrail never intervenes | The harness API source must be **Bedrock** (Converse). Check the `guardrailConfig` value is valid JSON with your guardrail ID, and that you created **version 1**. |
 | Policy engine shows *Associated gateways (0)* after associating | The gateway role lacks the Phase 6 Step A permissions. Add them, wait 30 s, associate again. |
+| *Policy with the same name already exists* | Policy names are unique per account. Start the name with your `MY_ID`. |
 | Policy shows *Create failed* | A tool or argument name does not exist on your gateway. Tool names are `<target>___<tool>` with **three** underscores; check the target name. |
-| After enforcement the agent stopped citing policy | `allow_policy_kb` is missing or names the wrong target. |
+| After enforcement the agent stopped citing policy | `MY_ID_allow_policy_kb` is missing or names the wrong target. |
 | No policy decisions in the gateway log | Tracing and log delivery (Phase 2 Step C) were not enabled, or you are querying the wrong gateway log group. |
 | Hook never appears in the trace | Event type must be **Before tool call**; the harness role needs `lambda:InvokeFunction` on the gate; start a new session after saving. |
 | Every tool call is denied by the hook with no reason | The gate Lambda errored or timed out and the failure mode is **Deny** (working as designed). Check the gate's CloudWatch log for a stack trace. |

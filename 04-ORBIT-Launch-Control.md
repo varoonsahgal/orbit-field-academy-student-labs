@@ -343,6 +343,9 @@ def lambda_handler(event, context):
 
 **Concept:** Registering a tool on a gateway does not give any agent access to it. The harness must list the gateway as a tool, *and* the harness execution role must be allowed to invoke that gateway. You will do the first, watch the second fail, and then fix it in IAM.
 
+> [!NOTE]
+> **Console change, late October 2026:** when you select a gateway in the harness form, the console may now attach an `AmazonBedrockAgentCoreHarnessGatewayPolicy_…` with `bedrock-agentcore:InvokeGateway` to the execution role for you. If your agent loads its tools without the 403 below, open **IAM → your harness role** and find that policy: it is the same permission this phase teaches, added automatically. Read the steps anyway; on roles you create yourself, nobody adds it for you.
+
 1. Agent page → **Update**. Expand **Tools – optional**. Turn on the **Gateway** toggle, open **Select gateway**, and pick **`orbit-MY_ID-gateway`** (it shows the gateway ID with the random suffix). Leave outbound auth at the default (AWS IAM).
 
    ![Edit Harness with the Gateway tool enabled and the gateway selected](images/m04-22-harness-edit-tools.png)
