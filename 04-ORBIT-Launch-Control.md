@@ -351,7 +351,7 @@ def lambda_handler(event, context):
    ![Edit Harness with the Gateway tool enabled and the gateway selected](images/m04-22-harness-edit-tools.png)
 
 2. Choose **Save Harness**. The banner reports **Version 2**. The harness goes **Updating** for 2–3 minutes and then **Active** (refresh to see it). (The DEFAULT endpoint always follows the latest version.)
-3. Open **Test agent**. Click the **X** next to *Session ID* (or reload the page) so you start a **new session**; tools are loaded when a session starts. Send:
+3. Open **Test agent** and start a **new session**, because tools are loaded when a session starts: choose **⋮ (More actions)** at the right of the Session ID bar → **New session → Stop current session and create new session**, or reload the page. (The **X** inside the *Session ID* box only clears the box; on November 4, 2026 the next message still went to the same session.) Send:
 
    > Look up order ORB-1001. Based on what the lookup returns and a 30-day return policy for unused tents, is it eligible for a standard refund? Do not issue a refund.
 
