@@ -29,6 +29,8 @@ Run the missions in order; each one builds on the last. Missions 01–02 are opt
 | 08 | [CONSTELLATION](08-ORBIT-Constellation.md) | Multi-agent systems | A crew of three agents: an analyst with a code interpreter, a scout with a browser, a commander that delegates through a gateway and waits for a human approval desk; trust boundaries, a reckless-commander drill, and the economics of a crew | 150–180 min |
 
 Each mission ends with **challenge exercises** for people who finish early and a **cleanup** list.
+
+**Break-fix track.** [`break-fix/`](break-fix/00-ORBITOPS-Start-Here.md) holds six hint-only break-fix missions (OrbitOps: Cosmic Cargo Rescue, A–F) on a pre-built, deliberately broken environment: login and JWT authorizers, gateway tool routing, a knowledge-base specialist agent, AgentCore Memory, private networking and Bedrock Guardrails. Each has a finish line, three hint levels per goal and a flight test; none contains the answers.
 Missions 03–05 have **field notes** (`companionguides/`): question-and-answer companions for the concepts behind each step.
 
 ## Before you start
